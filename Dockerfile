@@ -14,15 +14,14 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# 4. 下载并静默安装完全免费的 MATLAB Runtime R2023b (v915)
-# (直接从 MathWorks 公开 CDN 高速下载，彻底绕过 Docker Hub 的账号授权拦截)
-RUN wget -q https://ssd.mathworks.com/supportfiles/downloads/R2023b/Release/9.15/update3/installers/MATLAB_Runtime_R2023b_Update_3_glnxa64.zip \
-    && unzip -q MATLAB_Runtime_R2023b_Update_3_glnxa64.zip -d /tmp/matlab_runtime \
+# 4. 下载并静默安装完全免费的 MATLAB Runtime R2023b (基础版，永久有效不失效)
+RUN wget -q https://ssd.mathworks.com/supportfiles/downloads/R2023b/Release/9.15/installers/MATLAB_Runtime_R2023b_glnxa64.zip \
+    && unzip -q MATLAB_Runtime_R2023b_glnxa64.zip -d /tmp/matlab_runtime \
     && /tmp/matlab_runtime/install -mode silent -agreeToLicense yes \
-    && rm -rf /tmp/matlab_runtime MATLAB_Runtime_R2023b_Update_3_glnxa64.zip
+    && rm -rf /tmp/matlab_runtime MATLAB_Runtime_R2023b_glnxa64.zip
 
-# 5. 配置 MATLAB Runtime 的全局环境变量 (必须配置，否则 Python 找不到动态链接库)
-ENV LD_LIBRARY_PATH="/usr/local/MATLAB/MATLAB_Runtime/v915/runtime/glnxa64:/usr/local/MATLAB/MATLAB_Runtime/v915/bin/glnxa64:/usr/local/MATLAB/MATLAB_Runtime/v915/sys/os/glnxa64:/usr/local/MATLAB/MATLAB_Runtime/v915/sys/opengl/lib/glnxa64:${LD_LIBRARY_PATH}"
+# 5. 配置 MATLAB Runtime 的全局环境变量 (已修复未定义变量警告)
+ENV LD_LIBRARY_PATH="/usr/local/MATLAB/MATLAB_Runtime/v915/runtime/glnxa64:/usr/local/MATLAB/MATLAB_Runtime/v915/bin/glnxa64:/usr/local/MATLAB/MATLAB_Runtime/v915/sys/os/glnxa64:/usr/local/MATLAB/MATLAB_Runtime/v915/sys/opengl/lib/glnxa64"
 
 # 6. 设置工作目录并将你的所有代码和编译库拷贝进镜像
 WORKDIR /app
