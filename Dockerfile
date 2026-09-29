@@ -1,25 +1,39 @@
-# 1. 基础镜像改为官方提供的免费 MATLAB Runtime
-# 注意：标签(r2023b)必须与你在第2步编译时所用的 MATLAB 版本完全一致！
-FROM mathworks/matlab-runtime:r2023b
+# 1. 使用完全公开且极速拉取的 Ubuntu 22.04 官方基础镜像
+FROM ubuntu:22.04
 
-USER root
+# 2. 避免安装过程中出现时区选择等交互式弹窗
+ENV DEBIAN_FRONTEND=noninteractive
 
-# 2. 安装 Python 及 pip (Ubuntu 环境)
-RUN apt-get update && apt-get install -y python3 python3-pip && apt-get clean
+# 3. 安装 Python3, pip 以及 MATLAB Runtime 运行所需的底层依赖库
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    wget \
+    unzip \
+    libxext6 libxt6 libxmu6 libxpm4 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# 3. 设置工作目录并将所有文件考入容器
+# 4. 下载并静默安装完全免费的 MATLAB Runtime R2023b (v915)
+# (直接从 MathWorks 公开 CDN 高速下载，彻底绕过 Docker Hub 的账号授权拦截)
+RUN wget -q https://ssd.mathworks.com/supportfiles/downloads/R2023b/Release/9.15/update3/installers/MATLAB_Runtime_R2023b_Update_3_glnxa64.zip \
+    && unzip -q MATLAB_Runtime_R2023b_Update_3_glnxa64.zip -d /tmp/matlab_runtime \
+    && /tmp/matlab_runtime/install -mode silent -agreeToLicense yes \
+    && rm -rf /tmp/matlab_runtime MATLAB_Runtime_R2023b_Update_3_glnxa64.zip
+
+# 5. 配置 MATLAB Runtime 的全局环境变量 (必须配置，否则 Python 找不到动态链接库)
+ENV LD_LIBRARY_PATH="/usr/local/MATLAB/MATLAB_Runtime/v915/runtime/glnxa64:/usr/local/MATLAB/MATLAB_Runtime/v915/bin/glnxa64:/usr/local/MATLAB/MATLAB_Runtime/v915/sys/os/glnxa64:/usr/local/MATLAB/MATLAB_Runtime/v915/sys/opengl/lib/glnxa64:${LD_LIBRARY_PATH}"
+
+# 6. 设置工作目录并将你的所有代码和编译库拷贝进镜像
 WORKDIR /app
 COPY . /app/
 
-# 4. 安装刚才通过 MATLAB 编译出来的免授权 Python 库
-RUN cd sim_engine && python3 setup.py install
+# 7. 安装 Flask 后端依赖，并安装你编译好的免授权 MATLAB-Python 接口库
+RUN pip3 install --no-cache-dir -r requirements.txt \
+    && cd sim_engine && python3 setup.py install
 
-# 5. 安装 Flask
-RUN pip3 install --no-cache-dir -r requirements.txt
-
-# 6. 暴露端口
+# 8. 暴露给前端访问的 5045 端口
 EXPOSE 5045
 
-# 7. 切换回安全用户并启动服务
-USER matlab
+# 9. 启动 Python 后端服务
 CMD ["python3", "app.py"]
