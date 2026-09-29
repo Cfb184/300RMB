@@ -1,0 +1,24 @@
+name: Build Docker Tarball
+
+on:
+  push:
+    branches: [ "main", "master" ]
+
+jobs:
+  build-and-export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build Docker Image
+        run: docker build -t sim_engine_backend:v2 .
+
+      - name: Save Image to Tarball
+        run: docker save -o sim_engine_backend_v2.tar sim_engine_backend:v2
+
+      - name: Upload Tarball Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sim-backend-tar
+          path: sim_engine_backend_v2.tar
